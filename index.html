@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -54,9 +55,9 @@
         cursorStyle: 'block',
         fontFamily: "'Courier New', monospace, ui-monospace",
         theme: {
-          background: '#1a0f2e',
-          foreground: '#d8b4fe',
-          cursor: '#c084fc'
+          background: '#1e1e2e',
+          foreground: '#cdd6f4',
+          cursor: '#f5e0dc'
         }
       });
 
@@ -68,22 +69,35 @@
       window.addEventListener('resize', () => fitAddon.fit());
 
       // --- Files & content (single source of truth) ---
-      const resumeText = `╔════════════════════════════════════════════════════════════════════════════════╗
-║                                 RESUME                                         ║
-╚════════════════════════════════════════════════════════════════════════════════╝
+      const resumeText = `WORK EXPERIENCE
 
-┌─ PERSONAL INFORMATION ─────────────────────────────────────────────────────────┐
-│                                                                            │
-│  Name:        [Your Full Name]                                             │
-│  Email:       your.email@example.com                                       │
-│  Phone:       +62 XXX XXXX XXXX                                            │
-│  Location:    Bandung, West Java, Indonesia                                 │
-│  GitHub:      github.com/yourname                                          │
-│  LinkedIn:    linkedin.com/in/yourname                                     │
-│                                                                            │
-└────────────────────────────────────────────────────────────────────────────┘
+PT. Layanan Cerdas Indonesia (Dec 2024 – Feb 2025) — Intern Full Stack Developer, Bandung, ID
+• Debugged and fixed functionality issues in RESTful API systems.
+• Developed a responsive, mobile-friendly company profile website.
+• Stack: PHP (Laravel), Ubuntu, Nginx, Typescript (Vite)
 
-`;
+Palang Merah Indonesia Bandung (Feb 2019 – Aug 2019) — IT Support Intern
+• Developed a responsive company profile website from scratch.
+• Provided hardware and software troubleshooting.
+
+EDUCATION
+
+STT Mandala Bandung — Bachelor of Informatics Engineering (Expected Oct 2025)
+GPA: 3.2/4.0
+Active member of the Student Association; involved in organizational activities.
+
+PROJECTS
+
+Kenshi Steam Workshop Picker
+• Go-based web scraper extracting, displaying, and curating mod data from Steam Workshop.
+
+CERTIFICATIONS
+• Linux Essentials Certification (LPI)
+• Go Programming — Beginner to Advanced (Udemy)
+• Software Engineering Virtual Experience (Forage)
+
+INTERESTS
+Photography, 3D Modelling, AI.`;
 
       const asciiArt = String.raw`
     ██████╗ ███████╗██╗   ██╗███████╗██╗      ██████╗ ██████╗ ███████╗██╗
@@ -97,7 +111,7 @@
       const fileSystem = {
         'resume.md': resumeText + '\n[...full resume hidden for brevity]\n',
         'contact.txt': 'Email: your.email@example.com\nPhone: +62 XXX XXXX XXXX\nGitHub: github.com/yourname\nLinkedIn: linkedin.com/in/yourname',
-        'skills.txt': 'JavaScript, React, Vue.js, Node.js, Python, HTML/CSS, Docker, Git, PostgreSQL, MongoDB, AWS, Responsive Design, REST APIs',
+        'skills.txt': 'Golang, Python, TypeScript, MySQL, Problem-Solving, Team Collaboration, Time Management',
         'ascii.txt': asciiArt
       };
 
@@ -193,18 +207,38 @@
 
           case 'about':
             writeln('');
-            writeln('I am a full-stack developer focused on building scalable, maintainable web applications.');
-            writeln('Experience: 3+ years. Passionate about clean code and learning new technologies.');
+            writeln('Full-stack developer specializing in Go, TypeScript, and backend systems.');
+            writeln('Focused on clean architecture, Linux-first workflows, and scalable tooling.');
+            writeln('Currently building tools like the Kenshi Steam Workshop Picker in Go.');
             break;
 
           case 'contact':
             writeln('');
-            fileSystem['contact.txt'].split('\n').forEach(line => writeln(line));
+            writeln('Email: mochammadtora@gmail.com');
+            writeln('Phone: +62 851 5543 0335');
+            writeln('LinkedIn: linkedin.com/in/tora-sifa');
             break;
 
           case 'skills':
             writeln('');
-            fileSystem['skills.txt'].split(',').map(s => s.trim()).forEach(s => writeln('• ' + s));
+            writeln('Hard Skills:');
+            writeln('• Golang');
+            writeln('• Python');
+            writeln('• TypeScript');
+            writeln('• MySQL');
+            writeln('');
+            writeln('Soft Skills:');
+            writeln('• Problem-Solving');
+            writeln('• Team Collaboration');
+            writeln('• Time Management');
+            break;
+
+          case 'projects':
+            writeln('');
+            writeln('Kenshi Steam Workshop Picker:');
+            writeln('• Web scraper written in Go.');
+            writeln('• Extracts, displays, and curates Steam Workshop mods.');
+            writeln('• Designed for automation, performance, and reliability.');
             break;
 
           case 'exit':
