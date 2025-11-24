@@ -1,0 +1,368 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Terminal Resume — Refactored</title>
+  <!-- xterm.css -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css" />
+  <style>
+    /* Reset & layout */
+    :root { --bg: #1a0f2e; --fg: #d8b4fe; --muted: #bfa5e8; }
+    * { box-sizing: border-box; }
+    html,body { height: 100%; margin: 0; font-family: ui-monospace, 'Courier New', monospace; background: var(--bg); color: var(--fg); }
+    #app { height: 100vh; display: grid; grid-template-rows: auto 1fr; }
+    header { padding: 12px 16px; color: var(--muted); font-size: 13px; }
+
+    /* terminal container — fill remaining space */
+    #terminal { width: 100%; height: 100%; padding: 12px; }
+
+    /* xterm overrides (keeps layout consistent) */
+    .xterm { font-size: 14px; line-height: 1.1; }
+    .xterm .xterm-rows { padding: 6px; }
+
+    /* small helper for file list text */
+    .muted { color: var(--muted); font-size: 12px; }
+
+    /* responsive tweaks */
+    @media (max-width: 640px) {
+      header { font-size: 12px; }
+      .xterm { font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header class="muted">Terminal Resume — interactive demo. Type <code>help</code> to begin.</header>
+    <div id="terminal" role="application" aria-label="Terminal resume"></div>
+  </div>
+
+  <!-- xterm and fit addon -->
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/lib/xterm-addon-fit.min.js"></script>
+  <script>
+    (function () {
+      const { Terminal } = window;
+      const { FitAddon } = window; // loaded by fit addon bundle
+
+      // --- Basic terminal setup ---
+      const term = new Terminal({
+        convertEol: true,
+        allowProposedApi: true,
+        cursorBlink: true,
+        cursorStyle: 'block',
+        fontFamily: "'Courier New', monospace, ui-monospace",
+        theme: {
+          background: '#1a0f2e',
+          foreground: '#d8b4fe',
+          cursor: '#c084fc'
+        }
+      });
+
+      const fitAddon = new FitAddon.FitAddon();
+      term.loadAddon(fitAddon);
+      const container = document.getElementById('terminal');
+      term.open(container);
+      fitAddon.fit();
+      window.addEventListener('resize', () => fitAddon.fit());
+
+      // --- Files & content (single source of truth) ---
+      const resumeText = `╔════════════════════════════════════════════════════════════════════════════════╗
+║                                 RESUME                                         ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+┌─ PERSONAL INFORMATION ─────────────────────────────────────────────────────────┐
+│                                                                            │
+│  Name:        [Your Full Name]                                             │
+│  Email:       your.email@example.com                                       │
+│  Phone:       +62 XXX XXXX XXXX                                            │
+│  Location:    Bandung, West Java, Indonesia                                 │
+│  GitHub:      github.com/yourname                                          │
+│  LinkedIn:    linkedin.com/in/yourname                                     │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+
+`;
+
+      const asciiArt = String.raw`
+    ██████╗ ███████╗██╗   ██╗███████╗██╗      ██████╗ ██████╗ ███████╗██╗
+    ██╔══██╗██╔════╝██║   ██║██╔════╝██║     ██╔═══██╗██╔══██╗██╔════╝██║
+    ██║  ██║█████╗  ██║   ██║█████╗  ██║     ██║   ██║██████╔╝█████╗  ██║
+    ██║  ██║██╔══╝  ╚██╗ ██╔╝██╔══╝  ██║     ██║   ██║██╔═══╝ ██╔══╝  ╚═╝
+    ██████╔╝███████╗ ╚████╔╝ ███████╗███████╗╚██████╔╝██║     ███████╗██╗
+    ╚═════╝ ╚══════╝  ╚═══╝  ╚══════╝╚══════╝ ╚═════╝ ╚═╝     ╚══════╝╚═╝
+`;
+
+      const fileSystem = {
+        'resume.md': resumeText + '\n[...full resume hidden for brevity]\n',
+        'contact.txt': 'Email: your.email@example.com\nPhone: +62 XXX XXXX XXXX\nGitHub: github.com/yourname\nLinkedIn: linkedin.com/in/yourname',
+        'skills.txt': 'JavaScript, React, Vue.js, Node.js, Python, HTML/CSS, Docker, Git, PostgreSQL, MongoDB, AWS, Responsive Design, REST APIs',
+        'ascii.txt': asciiArt
+      };
+
+      // --- Shell state ---
+      let cwd = '~';
+      let inputBuffer = '';
+      const history = [];
+      let historyPos = -1; // -1 means editing current input
+
+      const commands = Object.freeze(['help','ls','cat','clear','pwd','about','contact','skills','exit']);
+
+      // --- Utilities ---
+      function prompt() {
+        term.write('\r\n' + cwd + '$ ');
+      }
+
+      function writeln(text = '') {
+        term.writeln(text);
+      }
+
+      function write(text = '') {
+        term.write(text);
+      }
+
+      function clearScreen() {
+        term.reset(); // clears, resets, and preserves addons
+      }
+
+      // split args safely (no shell expansion) — returns [cmd, ...args]
+      function splitArgs(line) {
+        // simple split by spaces while preserving quoted strings
+        const re = /(?:"([^"]*)")|(?:'([^']*)')|([^\s]+)/g;
+        const parts = [];
+        let m;
+        while ((m = re.exec(line)) !== null) {
+          parts.push(m[1] ?? m[2] ?? m[3]);
+        }
+        return parts;
+      }
+
+      // --- Command implementations ---
+      function runCommand(line) {
+        const parts = splitArgs(line.trim());
+        if (parts.length === 0) return;
+        const cmd = parts[0].toLowerCase();
+        const args = parts.slice(1);
+
+        switch (cmd) {
+          case 'help':
+            writeln('');
+            writeln('Available commands:');
+            writeln('  ls                - list files');
+            writeln('  cat <file>        - show a file');
+            writeln('  pwd               - print working directory');
+            writeln('  about             - short bio');
+            writeln('  contact           - contact info');
+            writeln('  skills            - skill summary');
+            writeln('  clear             - clear terminal');
+            writeln('  exit              - end session');
+            break;
+
+          case 'ls':
+            writeln('');
+            // present in columns
+            const names = Object.keys(fileSystem);
+            writeln(names.join('\t'));
+            break;
+
+          case 'cat':
+            if (args.length === 0) {
+              writeln('');
+              writeln('Usage: cat <filename>');
+              break;
+            }
+            const name = args[0];
+            if (fileSystem[name]) {
+              writeln('');
+              // preserve exact newlines — write each line to avoid xterm wrapping surprises
+              fileSystem[name].split('\n').forEach(line => writeln(line));
+            } else {
+              writeln('\ncat: ' + name + ': No such file or directory');
+            }
+            break;
+
+          case 'clear':
+            clearScreen();
+            break;
+
+          case 'pwd':
+            writeln('');
+            writeln(cwd);
+            break;
+
+          case 'about':
+            writeln('');
+            writeln('I am a full-stack developer focused on building scalable, maintainable web applications.');
+            writeln('Experience: 3+ years. Passionate about clean code and learning new technologies.');
+            break;
+
+          case 'contact':
+            writeln('');
+            fileSystem['contact.txt'].split('\n').forEach(line => writeln(line));
+            break;
+
+          case 'skills':
+            writeln('');
+            fileSystem['skills.txt'].split(',').map(s => s.trim()).forEach(s => writeln('• ' + s));
+            break;
+
+          case 'exit':
+            writeln('');
+            writeln('Session ended.');
+            break;
+
+          default:
+            writeln('');
+            writeln('Command not found: ' + cmd + '\nType "help" for a list of available commands.');
+        }
+      }
+
+      // --- Autocomplete (tab) ---
+      function getCompletions(partialLine) {
+        const parts = splitArgs(partialLine);
+        if (parts.length === 0) {
+          // suggest top-level commands
+          return commands.slice();
+        }
+        if (partialLine.endsWith(' ') ) {
+          // user finished a token — no partial
+          return [];
+        }
+        const last = parts.pop();
+        const first = parts[0] ?? '';
+
+        if (parts.length === 0) {
+          return commands.filter(c => c.startsWith(last));
+        }
+
+        // if command is cat, suggest filenames
+        if (first === 'cat') {
+          return Object.keys(fileSystem).filter(f => f.startsWith(last)).map(f => f);
+        }
+
+        return [];
+      }
+
+      function applyCompletion(currentLine) {
+        const parts = splitArgs(currentLine);
+        const comps = getCompletions(currentLine);
+        if (!comps || comps.length === 0) return null;
+        if (comps.length === 1) {
+          // build completed line preserving preceding tokens and spacing
+          const tokens = currentLine.match(/(?:[^\s"]+|"[^"]*"|'[^']*')+/g) || [];
+          const prefix = tokens.slice(0, -1).join(' ');
+          return (prefix ? prefix + ' ' : '') + comps[0];
+        }
+        return comps; // multiple suggestions
+      }
+
+      // --- Input handling & key events ---
+      function resetInputDisplay() {
+        // clear current input line visually and reprint prompt+buffer
+        term.write('\x1b[2K\r'); // ANSI: erase line
+        write(cwd + '$ ' + inputBuffer);
+      }
+
+      function acceptInput() {
+        // push to history if non-empty
+        const line = inputBuffer;
+        if (line.trim()) history.push(line);
+        historyPos = -1;
+        inputBuffer = '';
+        runCommand(line);
+        prompt();
+      }
+
+      // initial banner
+      asciiArt.split('\n').forEach(l => writeln(l));
+      writeln('');
+      writeln('Welcome to the Terminal Resume demo');
+      writeln('Type "help" to see available commands.');
+      prompt();
+
+      term.onKey(e => {
+        const ev = e.domEvent;
+        const key = e.key;
+
+        // handle Enter
+        if (ev.key === 'Enter') {
+          acceptInput();
+          return;
+        }
+
+        // handle Backspace
+        if (ev.key === 'Backspace') {
+          if (inputBuffer.length > 0) {
+            inputBuffer = inputBuffer.slice(0, -1);
+            // move cursor back, overwrite with space, move back again
+            term.write('\b \b');
+          }
+          return;
+        }
+
+        // Tab for autocomplete
+        if (ev.key === 'Tab') {
+          ev.preventDefault();
+          const result = applyCompletion(inputBuffer);
+          if (!result) return;
+          if (Array.isArray(result)) {
+            writeln('');
+            result.forEach(r => writeln(r));
+            resetInputDisplay();
+          } else {
+            inputBuffer = result;
+            resetInputDisplay();
+          }
+          return;
+        }
+
+        // Arrow Up / Down for history
+        if (ev.key === 'ArrowUp') {
+          ev.preventDefault();
+          if (history.length === 0) return;
+          if (historyPos === -1) historyPos = history.length - 1;
+          else historyPos = Math.max(0, historyPos - 1);
+          inputBuffer = history[historyPos];
+          resetInputDisplay();
+          return;
+        }
+        if (ev.key === 'ArrowDown') {
+          ev.preventDefault();
+          if (history.length === 0) return;
+          if (historyPos === -1) return; // nothing to go to
+          historyPos = Math.min(history.length - 1, historyPos + 1);
+          if (historyPos === history.length - 1) {
+            inputBuffer = history[historyPos];
+          } else if (historyPos >= 0) {
+            inputBuffer = history[historyPos];
+          } else {
+            inputBuffer = '';
+          }
+          resetInputDisplay();
+          return;
+        }
+
+        // Ctrl+C — cancel current input
+        if (ev.ctrlKey && ev.key === 'c') {
+          inputBuffer = '';
+          writeln('^C');
+          prompt();
+          return;
+        }
+
+        // printable characters
+        if (!ev.ctrlKey && !ev.metaKey && !ev.altKey && key.length === 1) {
+          inputBuffer += key;
+          term.write(key);
+        }
+      });
+
+      // focus terminal for immediate typing
+      term.focus();
+
+    })();
+  </script>
+</body>
+</html>
+
