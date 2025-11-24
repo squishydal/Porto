@@ -13,11 +13,11 @@
     :root { --bg: #1a0f2e; --fg: #d8b4fe; --muted: #bfa5e8; }
     * { box-sizing: border-box; }
     html,body { height: 100%; margin: 0; font-family: ui-monospace, 'Courier New', monospace; background: var(--bg); color: var(--fg); }
-    #app { height: 100vh; display: grid; grid-template-rows: auto 1fr; }
+    #app { height: 100vh; width: 100vw; display: block; background: #1e1e2e; }
     header { padding: 12px 16px; color: var(--muted); font-size: 13px; }
 
     /* terminal container — fill remaining space */
-    #terminal { width: 100%; height: 100%; padding: 12px; }
+    #terminal { width: 100%; height: 100%; padding: 0; margin: 0; }
 
     /* xterm overrides (keeps layout consistent) */
     .xterm { font-size: 14px; line-height: 1.1; }
@@ -31,11 +31,52 @@
       header { font-size: 12px; }
       .xterm { font-size: 12px; }
     }
+#app {
+  position: relative;
+  overflow: hidden;
+}
+
+#app::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+      rgba(255,255,255,0.04) 0px,
+      rgba(0,0,0,0.05) 2px,
+      transparent 3px
+  );
+  mix-blend-mode: overlay;
+  z-index: 3;
+}
+
+#app::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at center,
+    rgba(255,255,255,0.05) 0%,
+    rgba(0,0,0,0.3) 80%
+  );
+  z-index: 4;
+}
+
+.xterm {
+  filter: drop-shadow(0 0 4px #d8b4fe55)
+          drop-shadow(0 0 2px #d8b4fe33);
+  text-shadow: 0 0 6px #d8b4fe55;
+}
+
+body {
+  background: #0c0615; /* deeper CRT backdrop */
+}
   </style>
 </head>
 <body>
   <div id="app">
-    <header class="muted">Terminal Resume — interactive demo. Type <code>help</code> to begin.</header>
+    
     <div id="terminal" role="application" aria-label="Terminal resume"></div>
   </div>
 
@@ -54,11 +95,13 @@
         cursorBlink: true,
         cursorStyle: 'block',
         fontFamily: "'Courier New', monospace, ui-monospace",
-        theme: {
-          background: '#1e1e2e',
-          foreground: '#cdd6f4',
-          cursor: '#f5e0dc'
-        }
+        
+theme: {
+  background: '#120a1f', 
+  foreground: '#d8b4fe',
+  cursor: '#f5e0dc',
+}
+
       });
 
       const fitAddon = new FitAddon.FitAddon();
@@ -99,13 +142,14 @@ CERTIFICATIONS
 INTERESTS
 Photography, 3D Modelling, AI.`;
 
-      const asciiArt = String.raw`
-    ██████╗ ███████╗██╗   ██╗███████╗██╗      ██████╗ ██████╗ ███████╗██╗
-    ██╔══██╗██╔════╝██║   ██║██╔════╝██║     ██╔═══██╗██╔══██╗██╔════╝██║
-    ██║  ██║█████╗  ██║   ██║█████╗  ██║     ██║   ██║██████╔╝█████╗  ██║
-    ██║  ██║██╔══╝  ╚██╗ ██╔╝██╔══╝  ██║     ██║   ██║██╔═══╝ ██╔══╝  ╚═╝
-    ██████╔╝███████╗ ╚████╔╝ ███████╗███████╗╚██████╔╝██║     ███████╗██╗
-    ╚═════╝ ╚══════╝  ╚═══╝  ╚══════╝╚══════╝ ╚═════╝ ╚═╝     ╚══════╝╚═╝
+      
+const asciiArt = String.raw`
+████████╗ ██████╗ ██████╗  █████╗ 
+╚══██╔══╝██╔═══██╗██╔══██╗██╔══██╗
+   ██║   ██║   ██║██████╔╝███████║
+   ██║   ██║   ██║██╔══██╗██╔══██║
+   ██║   ╚██████╔╝██║  ██║██║  ██║
+   ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝
 `;
 
       const fileSystem = {
